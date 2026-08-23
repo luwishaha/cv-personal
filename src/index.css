@@ -33,43 +33,182 @@
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
-
-  .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
 }
 
 @layer base {
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-background text-foreground;
+  html {
+    scroll-behavior: smooth;
   }
+  body {
+    background: #f5f4ef;
+    color: #101a30;
+    font-family: "MiSans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    letter-spacing: 0.01em;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* ---------- 白昼纵深 设计系统 ---------- */
+:root {
+  --paper: #f5f4ef;
+  --paper-2: #eeebe2;
+  --panel: #ffffff;
+  --ink: #101a30;
+  --sub: #55607a;
+  --faint: #9aa3b8;
+  --indigo: #4a54e2;
+  --violet: #8b7cff;
+  --lav: #e3e0ff;
+  --line: #e2def0;
+  --amber: #d97706;
+}
+
+.font-display {
+  font-family: 'Smiley Sans Oblique', "MiSans", "PingFang SC", sans-serif;
+}
+.font-mono2 {
+  font-family: "JetBrains Mono", "SFMono-Regular", Menlo, monospace;
+}
+
+.kicker {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  color: var(--indigo);
+  text-transform: uppercase;
+}
+
+.paper-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 18px 40px -18px rgba(16, 26, 48, 0.12);
+}
+
+.indigo-card {
+  background: var(--indigo);
+  border-radius: 18px;
+  box-shadow: 0 22px 44px -16px rgba(74, 84, 226, 0.45);
+  color: #fff;
+}
+
+.hairline {
+  border-color: var(--line);
+}
+
+/* 透视地面 */
+.perspective-floor {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.perspective-floor svg {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 60%;
+}
+
+/* 环境光斑 */
+.glow {
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
+  filter: blur(2px);
+}
+.glow-violet {
+  background: radial-gradient(circle, rgba(139, 124, 255, 0.18), transparent 65%);
+}
+.glow-indigo {
+  background: radial-gradient(circle, rgba(74, 84, 226, 0.1), transparent 65%);
+}
+
+/* 逐字错峰入场 */
+@keyframes char-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.char-in {
+  display: inline-block;
+  opacity: 0;
+  animation: char-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* 滚动揭示 */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.reveal {
+  opacity: 0;
+}
+.reveal.on {
+  animation: rise-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* 人物帧切换 */
+.avatar-frame {
+  position: absolute;
+  inset: 0;
+  transition: opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.avatar-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+@keyframes float-y {
+  0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); }
+  50% { transform: translateY(-10px) rotate(var(--r, 0deg)); }
+}
+.float-badge {
+  animation: float-y 5s ease-in-out infinite;
+}
+
+/* 打字光标 */
+@keyframes blink {
+  50% { opacity: 0; }
+}
+.caret {
+  animation: blink 1s step-end infinite;
+}
+
+/* spotlight 层 */
+.spotlight-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d6d0e6;
+  border-radius: 8px;
+  border: 3px solid var(--paper);
 }

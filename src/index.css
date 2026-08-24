@@ -218,3 +218,18 @@
   background-image: radial-gradient(rgba(74, 84, 226, 0.07) 1.2px, transparent 1.2px);
   background-size: 30px 30px;
 }
+
+/* 节点素材弹层：入场动画 */
+.detail-pop {
+  animation: detail-pop-in 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes detail-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

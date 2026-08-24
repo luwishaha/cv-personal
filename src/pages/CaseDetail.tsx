@@ -1,4 +1,5 @@
 import type React from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import { Reveal, SiteNav } from "@/components/common";
 import { cases, type CaseData } from "@/data/cases";
@@ -51,64 +52,144 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-/* ---------- 通用：图标流程链 ---------- */
+/* ---------- 通用：图标流程链（可点击，弹出对应素材） ---------- */
+
+interface FlowDetail {
+  title: string;
+  lines: string[];
+  kind?: "experts";
+}
 
 interface FlowNode {
   icon: LucideIcon;
   label: string;
   sub?: string;
   chips?: string[];
+  detail?: FlowDetail;
+}
+
+const EXPERT_ICONS: LucideIcon[] = [Stethoscope, Brain, UserCheck, FileCog];
+
+/** 节点素材弹层（流程图与架构图共用） */
+function NodeDetailPanel({ detail, onClose }: { detail: FlowDetail; onClose: () => void }) {
+  return (
+    <div className="mt-8 rounded-2xl border-2 border-[#4A54E2]/40 bg-white shadow-[0_24px_48px_-20px_rgba(74,84,226,0.25)] p-7 detail-pop">
+      <div className="flex items-center justify-between">
+        <div className="font-mono2 text-[11px] tracking-widest text-[#9AA3B8]">
+          节点素材 · NODE MATERIAL
+        </div>
+        <button
+          onClick={onClose}
+          className="w-7 h-7 rounded-full border border-[#E2DEF0] text-[#9AA3B8] hover:text-[#4A54E2] hover:border-[#4A54E2] transition-colors text-[13px]"
+          aria-label="关闭"
+        >
+          ✕
+        </button>
+      </div>
+      <div className="mt-2 text-[17px] font-bold text-[#101A30]">{detail.title}</div>
+      {detail.kind === "experts" ? (
+        <div className="grid grid-cols-4 gap-3 mt-5">
+          {detail.lines.map((name, i) => {
+            const Icon = EXPERT_ICONS[i % EXPERT_ICONS.length];
+            return (
+              <div
+                key={name}
+                className="flex flex-col items-center gap-2 rounded-xl bg-[#F4F3FB] border border-[#E2DEF0] px-3 py-4"
+              >
+                <div className="w-11 h-11 rounded-full bg-white border border-[#E2DEF0] flex items-center justify-center text-[#4A54E2]">
+                  <Icon size={19} strokeWidth={1.8} />
+                </div>
+                <span className="text-[12.5px] font-medium text-[#101A30] text-center">
+                  {name}
+                </span>
+                <span className="font-mono2 text-[10px] text-[#9AA3B8]">
+                  EXPERT AGENT {i + 1}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <ul className="mt-4 space-y-2.5">
+          {detail.lines.map((l) => (
+            <li key={l} className="flex items-start gap-2.5 text-[13.5px] text-[#55607A]">
+              <span className="mt-[7px] w-1.5 h-1.5 rounded-full bg-[#4A54E2] shrink-0" />
+              {l}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 function IconFlow({ nodes, lastRed = true }: { nodes: FlowNode[]; lastRed?: boolean }) {
+  const [sel, setSel] = useState<number | null>(null);
+  const clickable = nodes.some((n) => n.detail);
   return (
-    <div className="flex items-start justify-between gap-2">
-      {nodes.map((n, i) => {
-        const last = i === nodes.length - 1;
-        const red = last && lastRed;
-        return (
-          <div key={n.label} className="flex items-start gap-2 flex-1 min-w-0">
-            <div className="flex flex-col items-center flex-1 min-w-0">
-              <div
-                className={`w-16 h-16 rounded-xl flex items-center justify-center border ${
-                  red
-                    ? "bg-[#FEF2F2] border-[#FECACA] text-[#DC2626]"
-                    : "bg-[#F4F3FB] border-[#E2DEF0] text-[#4A54E2]"
-                }`}
-              >
-                <n.icon size={26} strokeWidth={1.8} />
-              </div>
-              <div
-                className={`mt-2.5 text-[13.5px] font-bold text-center ${
-                  red ? "text-[#DC2626]" : "text-[#101A30]"
-                }`}
-              >
-                {n.label}
-              </div>
-              {n.sub && (
-                <div className="mt-1 text-[11px] text-[#9AA3B8] text-center leading-relaxed">
-                  {n.sub}
+    <div>
+      <div className="flex items-start justify-between gap-2">
+        {nodes.map((n, i) => {
+          const last = i === nodes.length - 1;
+          const red = last && lastRed;
+          const active = sel === i;
+          return (
+            <div key={n.label} className="flex items-start gap-2 flex-1 min-w-0">
+              <div className="flex flex-col items-center flex-1 min-w-0">
+                <button
+                  type="button"
+                  disabled={!n.detail}
+                  onClick={() => setSel(active ? null : i)}
+                  className={`w-16 h-16 rounded-xl flex items-center justify-center border transition-all duration-300 ${
+                    active
+                      ? "bg-white border-[#4A54E2] text-[#4A54E2] shadow-[0_14px_28px_-10px_rgba(74,84,226,0.45)] -translate-y-1"
+                      : red
+                        ? "bg-[#FEF2F2] border-[#FECACA] text-[#DC2626]"
+                        : "bg-[#F4F3FB] border-[#E2DEF0] text-[#4A54E2]"
+                  } ${n.detail ? "cursor-pointer hover:-translate-y-1 hover:shadow-[0_14px_28px_-12px_rgba(74,84,226,0.35)]" : "cursor-default"}`}
+                >
+                  <n.icon size={26} strokeWidth={1.8} />
+                </button>
+                <div
+                  className={`mt-2.5 text-[13.5px] font-bold text-center ${
+                    active ? "text-[#4A54E2]" : red ? "text-[#DC2626]" : "text-[#101A30]"
+                  }`}
+                >
+                  {n.label}
                 </div>
-              )}
-              {n.chips && (
-                <div className="flex gap-1.5 mt-2">
-                  {n.chips.map((c) => (
-                    <span
-                      key={c}
-                      className="px-2.5 py-0.5 rounded-md bg-white border border-[#E2DEF0] font-mono2 text-[10px] text-[#55607A]"
-                    >
-                      {c}
-                    </span>
-                  ))}
-                </div>
+                {n.sub && (
+                  <div className="mt-1 text-[11px] text-[#9AA3B8] text-center leading-relaxed">
+                    {n.sub}
+                  </div>
+                )}
+                {n.chips && (
+                  <div className="flex gap-1.5 mt-2">
+                    {n.chips.map((c) => (
+                      <span
+                        key={c}
+                        className="px-2.5 py-0.5 rounded-md bg-white border border-[#E2DEF0] font-mono2 text-[10px] text-[#55607A]"
+                      >
+                        {c}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {!last && (
+                <span className="text-[#4A54E2] text-lg mt-5 shrink-0">→</span>
               )}
             </div>
-            {!last && (
-              <span className="text-[#4A54E2] text-lg mt-5 shrink-0">→</span>
-            )}
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+      {clickable && sel === null && (
+        <div className="mt-6 text-center font-mono2 text-[11px] tracking-widest text-[#B6BCD0]">
+          ↑ 点击流程节点，查看对应素材
+        </div>
+      )}
+      {sel !== null && nodes[sel].detail && (
+        <NodeDetailPanel detail={nodes[sel].detail!} onClose={() => setSel(null)} />
+      )}
     </div>
   );
 }
@@ -120,12 +201,85 @@ function ZhipuSystem() {
     <div className="paper-card p-10">
       <IconFlow
         nodes={[
-          { icon: Users, label: "业务需求", sub: "定义问题" },
-          { icon: Target, label: "评测目标", sub: "定义什么是好" },
-          { icon: Database, label: "评测集", sub: "样本与规则" },
-          { icon: Play, label: "自动评测", sub: "任务编排", chips: ["Direct", "Gateway"] },
-          { icon: ChartColumn, label: "结果对比", sub: "统一指标" },
-          { icon: ChartPie, label: "产品决策", sub: "选型 / 回归 / 验收" },
+          {
+            icon: Users,
+            label: "业务需求",
+            sub: "定义问题",
+            detail: {
+              title: "业务需求来源",
+              lines: [
+                "PPT 生成：大纲结构、内容逻辑、场景化分页",
+                "视觉理解 / Design QA：信息覆盖、属性与位置、幻觉控制",
+                "Excel 能力：表格理解、公式生成、数据分析",
+              ],
+            },
+          },
+          {
+            icon: Target,
+            label: "评测目标",
+            sub: "定义什么是好",
+            detail: {
+              title: "把“什么是好”拆成可打分的维度",
+              lines: [
+                "每个业务场景拆为 3 个可评测量化维度",
+                "维度与业务验收标准一一对应",
+                "业务场景 → 评价维度 → 评测样本 → 结果对比",
+              ],
+            },
+          },
+          {
+            icon: Database,
+            label: "评测集",
+            sub: "样本与规则",
+            detail: {
+              title: "评测集构成",
+              lines: [
+                "150+ 评测样本，覆盖 3 类业务场景",
+                "样本绑定评价维度与打分规则",
+                "版本化管理，支持复测与回归",
+              ],
+            },
+          },
+          {
+            icon: Play,
+            label: "自动评测",
+            sub: "任务编排",
+            chips: ["Direct", "Gateway"],
+            detail: {
+              title: "双通道自动评测",
+              lines: [
+                "Direct 直连：模型直出，作为能力基线",
+                "Gateway 网关：走真实产品链路",
+                "Gateway E2E − Direct E2E = 网关净开销",
+              ],
+            },
+          },
+          {
+            icon: ChartColumn,
+            label: "结果对比",
+            sub: "统一指标",
+            detail: {
+              title: "可复现的对比口径",
+              lines: [
+                "同一模型 × 同一样本 × 相邻时间窗口",
+                "8 个模型横向对比，统一指标输出",
+                "结果可直接进入选型与验收讨论",
+              ],
+            },
+          },
+          {
+            icon: ChartPie,
+            label: "产品决策",
+            sub: "选型 / 回归 / 验收",
+            detail: {
+              title: "评测结果的三个去向",
+              lines: [
+                "模型选型：横向对比质量、性能与成本",
+                "版本回归：识别能力变化与异常退化",
+                "上线验收：按场景标准完成产品验收",
+              ],
+            },
+          },
         ]}
       />
       <div className="mt-10 max-w-[560px] mx-auto rounded-xl border border-dashed border-[#B9B2E8] bg-[#F4F3FB] px-8 py-3.5 text-center text-[14px] text-[#4A54E2]">
@@ -139,6 +293,7 @@ function ZhipuSystem() {
 }
 
 function OppoSystem() {
+  const [sel, setSel] = useState<string | null>(null);
   const hostItems: [LucideIcon, string][] = [
     [ClipboardList, "任务拆解"],
     [AppWindow, "应用生命周期"],
@@ -155,6 +310,49 @@ function OppoSystem() {
     [ShieldCheck, "状态校验"],
     [FileText, "日志与报告"],
   ];
+  const DETAILS: Record<string, FlowDetail> = {
+    任务拆解: {
+      title: "任务拆解",
+      lines: ["将用例批次拆为可执行的原子任务", "按功能模块分组，生成执行顺序", "输出结构化任务清单给执行面"],
+    },
+    应用生命周期: {
+      title: "应用生命周期管理",
+      lines: ["启动、挂载、关闭目标应用", "异常退出自动拉起", "保证每个任务从干净状态开始"],
+    },
+    调度与重试: {
+      title: "调度与重试",
+      lines: ["多任务排队与并发控制", "失败自动重试并记录原因", "超时熔断，避免单任务卡死"],
+    },
+    状态汇总: {
+      title: "状态汇总",
+      lines: ["实时汇总各任务执行状态", "通过 / 失败 / 重试中一目了然", "为报告与告警提供数据源"],
+    },
+    界面截图: { title: "界面截图", lines: ["当前屏幕帧，作为视觉输入", "供 VLM 路径做界面理解"] },
+    "UI 结构信息": { title: "UI 结构信息", lines: ["控件树 / 可访问性树", "为 Skill 路径提供稳定锚点"] },
+    领域知识: { title: "领域知识", lines: ["软件文档与历史操作步骤", "让 Agent 理解专业看图软件的功能语义"] },
+    观察界面: { title: "观察界面", lines: ["读取截图与 UI 结构信息", "判断当前处于哪个功能状态"] },
+    规划步骤: { title: "规划步骤", lines: ["把任务拆成动作序列", "校验未通过则回到此步重新规划"] },
+    执行动作: { title: "执行动作", lines: ["点击、输入、拖拽等界面操作", "优先走 Skill 路径，必要时调用 VLM"] },
+    校验结果: { title: "校验结果", lines: ["断言执行后的界面状态", "通过则完成任务，未通过则回流"] },
+    "Skill 路径": {
+      title: "Skill 路径",
+      lines: ["稳定控件 / 高频操作直接调用预置技能", "不依赖视觉模型，速度快、确定性高"],
+    },
+    "VLM 路径": {
+      title: "VLM 路径",
+      lines: ["复杂界面 / 自绘控件走视觉理解", "小型 VLM 经领域优化，定位更稳定"],
+    },
+    目标应用: { title: "目标应用", lines: ["被测的专业看图软件（脱敏）", "自绘控件密集，通用模型定位困难"] },
+    状态校验: { title: "状态校验", lines: ["执行后状态与预期比对", "结果回传控制面汇总"] },
+    日志与报告: { title: "日志与报告", lines: ["完整步骤日志留痕", "自动生成回归测试报告"] },
+  };
+  const toggle = (k: string) => setSel((s) => (s === k ? null : k));
+  const pickCls = (k: string, base: string) =>
+    `${base} cursor-pointer transition-all duration-300 ${
+      sel === k
+        ? "!border-[#4A54E2] shadow-[0_12px_24px_-10px_rgba(74,84,226,0.4)] -translate-y-0.5"
+        : "hover:-translate-y-0.5 hover:border-[#C7CBFF]"
+    }`;
   return (
     <div className="paper-card p-8">
       {/* Host 控制面 */}
@@ -164,13 +362,18 @@ function OppoSystem() {
         </div>
         <div className="grid grid-cols-4 gap-3 mt-3.5">
           {hostItems.map(([Icon, t]) => (
-            <div
+            <button
+              type="button"
               key={t}
-              className="flex items-center justify-center gap-2 rounded-lg bg-white border border-[#E2DEF0] px-3 py-2.5 text-[12.5px] text-[#101A30]"
+              onClick={() => toggle(t)}
+              className={pickCls(
+                t,
+                "flex items-center justify-center gap-2 rounded-lg bg-white border border-[#E2DEF0] px-3 py-2.5 text-[12.5px] text-[#101A30]"
+              )}
             >
               <Icon size={15} className="text-[#4A54E2]" />
               {t}
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -184,13 +387,18 @@ function OppoSystem() {
         {/* 输入 */}
         <div className="space-y-3">
           {inputs.map(([Icon, t]) => (
-            <div
+            <button
+              type="button"
               key={t}
-              className="flex items-center gap-2.5 rounded-xl bg-white border border-[#E2DEF0] px-4 py-3 text-[12.5px] text-[#101A30]"
+              onClick={() => toggle(t)}
+              className={pickCls(
+                t,
+                "w-full flex items-center gap-2.5 rounded-xl bg-white border border-[#E2DEF0] px-4 py-3 text-[12.5px] text-[#101A30] text-left"
+              )}
             >
               <Icon size={16} className="text-[#4A54E2] shrink-0" />
               {t}
-            </div>
+            </button>
           ))}
         </div>
         <span className="text-[#4A54E2] text-xl">→</span>
@@ -203,9 +411,16 @@ function OppoSystem() {
           <div className="flex items-center justify-center gap-2 mt-3.5 flex-wrap">
             {["观察界面", "规划步骤", "执行动作", "校验结果"].map((s, i, arr) => (
               <div key={s} className="flex items-center gap-2">
-                <span className="px-4 py-2 rounded-lg bg-white border border-[#E2DEF0] text-[12.5px] font-medium text-[#101A30]">
+                <button
+                  type="button"
+                  onClick={() => toggle(s)}
+                  className={pickCls(
+                    s,
+                    "px-4 py-2 rounded-lg bg-white border border-[#E2DEF0] text-[12.5px] font-medium text-[#101A30]"
+                  )}
+                >
                   {s}
-                </span>
+                </button>
                 {i < arr.length - 1 && <span className="text-[#4A54E2]">→</span>}
               </div>
             ))}
@@ -214,20 +429,25 @@ function OppoSystem() {
             - - 未通过则重新规划，直到通过 - -
           </div>
           <div className="grid grid-cols-2 gap-3 mt-4">
-            <div className="flex items-center gap-3 rounded-xl bg-white border border-[#E2DEF0] px-4 py-3">
-              <Cog size={20} className="text-[#4A54E2] shrink-0" />
-              <div>
-                <div className="text-[13px] font-bold text-[#101A30]">Skill 路径</div>
-                <div className="text-[11px] text-[#9AA3B8]">稳定控件 / 高频操作</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-xl bg-white border border-[#E2DEF0] px-4 py-3">
-              <Image size={20} className="text-[#4A54E2] shrink-0" />
-              <div>
-                <div className="text-[13px] font-bold text-[#101A30]">VLM 路径</div>
-                <div className="text-[11px] text-[#9AA3B8]">复杂界面 / 视觉理解</div>
-              </div>
-            </div>
+            {([["Skill 路径", Cog, "稳定控件 / 高频操作"], ["VLM 路径", Image, "复杂界面 / 视觉理解"]] as const).map(
+              ([t, Icon, sub]) => (
+                <button
+                  type="button"
+                  key={t}
+                  onClick={() => toggle(t)}
+                  className={pickCls(
+                    t,
+                    "flex items-center gap-3 rounded-xl bg-white border border-[#E2DEF0] px-4 py-3 text-left"
+                  )}
+                >
+                  <Icon size={20} className="text-[#4A54E2] shrink-0" />
+                  <div>
+                    <div className="text-[13px] font-bold text-[#101A30]">{t}</div>
+                    <div className="text-[11px] text-[#9AA3B8]">{sub}</div>
+                  </div>
+                </button>
+              )
+            )}
           </div>
         </div>
         <span className="text-[#4A54E2] text-xl">→</span>
@@ -235,16 +455,29 @@ function OppoSystem() {
         {/* 输出 */}
         <div className="space-y-3">
           {outputs.map(([Icon, t]) => (
-            <div
+            <button
+              type="button"
               key={t}
-              className="flex items-center gap-2.5 rounded-xl bg-white border border-[#E2DEF0] px-4 py-3 text-[12.5px] text-[#101A30]"
+              onClick={() => toggle(t)}
+              className={pickCls(
+                t,
+                "w-full flex items-center gap-2.5 rounded-xl bg-white border border-[#E2DEF0] px-4 py-3 text-[12.5px] text-[#101A30] text-left"
+              )}
             >
               <Icon size={16} className="text-[#4A54E2] shrink-0" />
               {t}
-            </div>
+            </button>
           ))}
         </div>
       </div>
+
+      {sel === null ? (
+        <div className="mt-6 text-center font-mono2 text-[11px] tracking-widest text-[#B6BCD0]">
+          ↑ 点击任意模块，查看对应素材
+        </div>
+      ) : (
+        <NodeDetailPanel detail={DETAILS[sel]} onClose={() => setSel(null)} />
+      )}
 
       <div className="mt-6 rounded-xl bg-[#4A54E2] text-white text-center text-[14px] px-8 py-4">
         ★ 稳定步骤优先走 Skill；视觉能力只用于必须理解界面的环节。
@@ -258,13 +491,93 @@ function TclSystem() {
     <div className="paper-card p-10">
       <IconFlow
         nodes={[
-          { icon: Globe, label: "目标市场" },
-          { icon: Bookmark, label: "白名单来源" },
-          { icon: Bot, label: "当日自动抓取" },
-          { icon: FileSearch, label: "政策解析", sub: "国家 · 品类 · 税率 · 生效时间" },
-          { icon: Calculator, label: "影响计算", sub: "关税 / 退税 / VAT" },
-          { icon: Bell, label: "证据与预警", sub: "原文链接 · 关键条款 · 阈值告警" },
-          { icon: Package, label: "库存 / 出货调整" },
+          {
+            icon: Globe,
+            label: "目标市场",
+            detail: {
+              title: "目标市场范围",
+              lines: [
+                "覆盖重点出货国家与地区",
+                "按市场维护关税、退税与 VAT 规则",
+                "市场 × 品类 构成监测网格",
+              ],
+            },
+          },
+          {
+            icon: Bookmark,
+            label: "白名单来源",
+            detail: {
+              title: "白名单来源清单",
+              lines: [
+                "海关 / 政府官网：政策原文第一手来源",
+                "税务与贸易机构：税率与执行细则",
+                "权威贸易媒体：解读与补充信号",
+              ],
+            },
+          },
+          {
+            icon: Bot,
+            label: "当日自动抓取",
+            detail: {
+              title: "当日自动抓取",
+              lines: [
+                "每日定时抓取白名单来源更新",
+                "变更检测，只保留新增与修订",
+                "失败自动重试并记录抓取日志",
+              ],
+            },
+          },
+          {
+            icon: FileSearch,
+            label: "政策解析",
+            sub: "国家 · 品类 · 税率 · 生效时间",
+            detail: {
+              title: "政策解析抽取字段",
+              lines: [
+                "国家 / 地区：政策适用范围",
+                "品类：受影响的商品类目",
+                "税率与生效时间：计算与排期依据",
+              ],
+            },
+          },
+          {
+            icon: Calculator,
+            label: "影响计算",
+            sub: "关税 / 退税 / VAT",
+            detail: {
+              title: "影响计算口径",
+              lines: [
+                "政策变更 × SKU × 国家 × 出货量",
+                "输出单位到岸成本变化",
+                "汇总为影响价值，支持排序",
+              ],
+            },
+          },
+          {
+            icon: Bell,
+            label: "证据与预警",
+            sub: "原文链接 · 关键条款 · 阈值告警",
+            detail: {
+              title: "证据与预警卡片",
+              lines: [
+                "每条结论绑定原文链接与关键条款",
+                "超过阈值自动触发告警",
+                "标准文件 · 证据卡片 · 阈值告警",
+              ],
+            },
+          },
+          {
+            icon: Package,
+            label: "库存 / 出货调整",
+            detail: {
+              title: "落到业务动作",
+              lines: [
+                "影响价值转化为库存调整建议",
+                "出货节奏与目的国优先级调整",
+                "政策变化 → 影响价值 → 库存与出货调整",
+              ],
+            },
+          },
         ]}
       />
       <div className="mt-10 flex items-center justify-center gap-4">
@@ -286,12 +599,81 @@ function HospitalSystem() {
       <IconFlow
         lastRed={false}
         nodes={[
-          { icon: FileText, label: "病案输入", sub: "病案首页 · 入院手术 · 出院" },
-          { icon: Layers, label: "证据增强", sub: "国临 2.0 · ICD 院内知识库" },
-          { icon: Users, label: "专家讨论", sub: "临床 · 病理 编码 · 规则" },
-          { icon: UserCheck, label: "Moderator", sub: "识别分歧 · 形成共识" },
-          { icon: Target, label: "Decision Maker", sub: "整合判断 · 标记疑点" },
-          { icon: ClipboardCheck, label: "辅助编码结果", sub: "建议 · 证据链 · 可疑点" },
+          {
+            icon: FileText,
+            label: "病案输入",
+            sub: "病案首页 · 入院手术 · 出院",
+            detail: {
+              title: "病案输入材料",
+              lines: [
+                "病案首页：主诊断候选与基础信息",
+                "入院记录 / 手术记录：临床经过",
+                "出院记录：转归与最终诊断描述",
+              ],
+            },
+          },
+          {
+            icon: Layers,
+            label: "证据增强",
+            sub: "国临 2.0 · ICD 院内知识库",
+            detail: {
+              title: "证据增强来源",
+              lines: [
+                "国临 2.0 编码与 ICD 注释",
+                "院内知识库：历史病例与编码口径",
+                "知识图谱 Top-3 关键路径注入",
+              ],
+            },
+          },
+          {
+            icon: Users,
+            label: "专家讨论",
+            sub: "临床 · 病理 编码 · 规则",
+            detail: {
+              title: "4 个专家 Agent 参与讨论",
+              kind: "experts",
+              lines: ["甲乳临床专家", "甲乳病理专家", "专科编码员", "规则分析师"],
+            },
+          },
+          {
+            icon: UserCheck,
+            label: "Moderator",
+            sub: "识别分歧 · 形成共识",
+            detail: {
+              title: "Moderator 共识判断",
+              lines: [
+                "识别各专家 Agent 之间的分歧点",
+                "共识度低则发起定向讨论，更新判断",
+                "共识度高则进入决策环节",
+              ],
+            },
+          },
+          {
+            icon: Target,
+            label: "Decision Maker",
+            sub: "整合判断 · 标记疑点",
+            detail: {
+              title: "Decision Maker 决策",
+              lines: [
+                "整合讨论结论，给出编码判断",
+                "存在可疑点时转编码员复核",
+                "保留完整推理链，支持复盘",
+              ],
+            },
+          },
+          {
+            icon: ClipboardCheck,
+            label: "辅助编码结果",
+            sub: "建议 · 证据链 · 可疑点",
+            detail: {
+              title: "辅助编码结果输出",
+              lines: [
+                "编码建议：主诊断编码候选",
+                "证据链：每条建议可追溯到病历原文",
+                "可疑点：⚠ 标记需人工复核的位置",
+              ],
+            },
+          },
         ]}
       />
       {/* 回流：共识度低则定向讨论 */}
@@ -373,7 +755,7 @@ function OppoMech() {
   ];
   return (
     <>
-      <div className="grid grid-cols-[1fr_auto_1.4fr_auto_1fr] gap-3 items-stretch">
+      <div className="grid grid-cols-[1fr_auto_1.4fr_auto_1.15fr] gap-3 items-stretch">
         <div className="rounded-2xl bg-white border border-[#F3D9D9] p-6">
           <div className="font-mono2 text-[12px] text-[#DC2626]">Before · 通用 VLM</div>
           <div className="mt-5 space-y-4">
@@ -410,13 +792,25 @@ function OppoMech() {
           </div>
         </div>
         <div className="self-center text-[#4A54E2] text-xl">→</div>
-        <div className="rounded-2xl bg-white border border-[#E2DEF0] p-6">
-          <div className="font-mono2 text-[12px] text-[#4A54E2]">After</div>
+        <div className="rounded-2xl bg-white border-2 border-[#4A54E2]/50 p-6 shadow-[0_20px_40px_-18px_rgba(74,84,226,0.25)]">
+          <div className="font-mono2 text-[13px] font-bold text-[#4A54E2]">After · 结论</div>
           <div className="mt-5 space-y-4">
             {afterItems.map(([Icon, t]) => (
-              <div key={t} className="flex items-center gap-2.5 text-[12.5px] text-[#101A30]">
-                <Icon size={16} className="text-[#4A54E2] shrink-0" />
+              <div key={t} className="flex items-center gap-3 text-[15px] font-semibold text-[#101A30]">
+                <Icon size={19} className="text-[#4A54E2] shrink-0" />
                 {t}
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 pt-4 border-t border-[#F0EDF8] grid grid-cols-3 divide-x divide-[#F0EDF8]">
+            {[
+              ["87%", "端到端完成率"],
+              ["12s→6s", "单用例耗时"],
+              ["120+", "自动化用例"],
+            ].map(([v, l]) => (
+              <div key={l} className="px-3 first:pl-0 last:pr-0 text-center">
+                <div className="font-mono2 text-[19px] font-bold text-[#4A54E2]">{v}</div>
+                <div className="text-[11px] text-[#9AA3B8] mt-1">{l}</div>
               </div>
             ))}
           </div>
@@ -430,12 +824,39 @@ function OppoMech() {
 }
 
 function TclMech() {
+  const sources: [LucideIcon, string][] = [
+    [Landmark, "海关 /\n政府官网"],
+    [ShieldCheck, "税务与\n贸易机构"],
+    [Newspaper, "权威贸易媒体"],
+  ];
   return (
     <>
-      <div className="grid grid-cols-[1fr_auto_1fr] gap-5 items-stretch">
+      <div className="grid grid-cols-[1fr_auto_1.3fr] gap-5 items-stretch">
+        {/* V1：文档堆 + 告警 */}
         <div className="rounded-2xl bg-white border border-[#E2DEF0] p-7">
           <div className="font-mono2 text-[13px] font-bold text-[#4A54E2]">V1 · 全网抓取</div>
-          <ul className="mt-4 space-y-2.5 text-[13px] text-[#55607A] list-disc pl-5">
+          <div className="relative h-[104px] mt-5">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="absolute left-1/2 top-1 w-[120px] h-[86px] rounded-lg bg-[#FAFAF7] border border-[#E8E4DA] shadow-[0_8px_18px_-10px_rgba(16,26,48,0.2)]"
+                style={{
+                  transform: `translateX(calc(-50% + ${(i - 1) * 34}px)) rotate(${(i - 1) * 7}deg)`,
+                  zIndex: i,
+                }}
+              >
+                <div className="p-3 space-y-1.5">
+                  {[76, 60, 68, 48].map((w, j) => (
+                    <div key={j} className="h-1.5 rounded bg-[#E4E1D8]" style={{ width: w }} />
+                  ))}
+                </div>
+                {i === 2 && (
+                  <TriangleAlert size={18} className="absolute -right-2 -bottom-2 text-[#DC2626] bg-white rounded-full" />
+                )}
+              </div>
+            ))}
+          </div>
+          <ul className="mt-5 space-y-2.5 text-[13px] text-[#55607A] list-disc pl-5">
             <li>页面数量过多</li>
             <li>重复与过期信息混入</li>
             <li>噪声导致结果失真</li>
@@ -443,38 +864,32 @@ function TclMech() {
         </div>
         <div className="self-center flex flex-col items-center gap-3 px-2">
           <span className="text-[#4A54E2] text-2xl">→</span>
-          <p className="text-[12.5px] text-[#55607A] text-center leading-relaxed max-w-[180px]">
+          <p className="text-[13px] font-semibold text-[#101A30] text-center leading-relaxed max-w-[180px]">
             覆盖率不是唯一目标，可信度决定结果能否进入业务决策。
           </p>
         </div>
+        {/* V2：三个来源卡 + 要点 */}
         <div className="rounded-2xl bg-white border-2 border-[#4A54E2]/40 p-7">
           <div className="font-mono2 text-[13px] font-bold text-[#4A54E2]">V2 · 白名单优先</div>
-          <ul className="mt-4 space-y-2.5 text-[13px] text-[#101A30] list-disc pl-5">
+          <div className="grid grid-cols-3 gap-3 mt-5">
+            {sources.map(([Icon, t]) => (
+              <div
+                key={t}
+                className="rounded-xl border border-[#E2DEF0] border-t-[3px] border-t-[#4A54E2] bg-[#FAFAFF] px-3 py-4 flex flex-col items-center gap-2.5 text-center"
+              >
+                <Icon size={22} strokeWidth={1.8} className="text-[#4A54E2]" />
+                <span className="text-[12px] font-bold text-[#101A30] leading-snug whitespace-pre-line">
+                  {t}
+                </span>
+              </div>
+            ))}
+          </div>
+          <ul className="mt-5 space-y-2.5 text-[13px] text-[#101A30] list-disc pl-5">
             <li>官方来源优先抓取</li>
             <li>按来源可信度排序</li>
             <li>输出结果绑定证据</li>
           </ul>
         </div>
-      </div>
-      <div className="mt-10 flex items-center justify-center gap-5">
-        {[
-          [Landmark, "海关 / 政府官网"],
-          [Landmark, "税务与贸易机构"],
-          [Newspaper, "权威贸易媒体"],
-        ].map(([Icon, t], i, arr) => {
-          const I = Icon as LucideIcon;
-          return (
-            <div key={t as string} className="flex items-center gap-5">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-lg bg-[#F4F3FB] border border-[#E2DEF0] flex items-center justify-center text-[#4A54E2]">
-                  <I size={19} strokeWidth={1.8} />
-                </div>
-                <span className="text-[13.5px] font-medium text-[#101A30]">{t as string}</span>
-              </div>
-              {i < arr.length - 1 && <span className="text-[#4A54E2]">→</span>}
-            </div>
-          );
-        })}
       </div>
     </>
   );
@@ -675,6 +1090,10 @@ const PAIN_ICONS: Record<string, LucideIcon[]> = {
 export default function CaseDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  // 切换到下一个 case 时回到页面最上方
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+  }, [id]);
   const c = cases.find((x) => x.id === id);
   if (!c)
     return (

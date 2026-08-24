@@ -1,5 +1,6 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import {
+  adminKeys,
   conversations,
   evidenceFiles,
   knowledgeItems,
@@ -169,6 +170,26 @@ export async function upsertLlmSettings(data: {
     .update(llmSettings)
     .set({ ...data, updatedAt: new Date() })
     .where(eq(llmSettings.id, existing.id));
+}
+
+// ---------- admin key ----------
+
+export async function getAdminKeyHash() {
+  const rows = await getDb().select().from(adminKeys).limit(1);
+  return rows.at(0)?.keyHash ?? null;
+}
+
+export async function setAdminKeyHash(keyHash: string) {
+  const rows = await getDb().select().from(adminKeys).limit(1);
+  const existing = rows.at(0);
+  if (!existing) {
+    await getDb().insert(adminKeys).values({ keyHash });
+    return;
+  }
+  await getDb()
+    .update(adminKeys)
+    .set({ keyHash, updatedAt: new Date() })
+    .where(eq(adminKeys.id, existing.id));
 }
 
 // ---------- stats ----------

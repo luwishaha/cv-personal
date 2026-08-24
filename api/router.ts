@@ -1,5 +1,6 @@
 import { authRouter } from "./auth-router";
 import { askmeRouter, adminRouter } from "./askme-router";
+import { adminAuthRouter } from "./admin-auth";
 import { createRouter, publicQuery } from "./middleware";
 
 export const appRouter = createRouter({
@@ -7,6 +8,7 @@ export const appRouter = createRouter({
   auth: authRouter,
   askme: askmeRouter,
   admin: adminRouter,
+  adminAuth: adminAuthRouter,
 
   // TODO: add feature routers here, e.g.
   // todo: createRouter({

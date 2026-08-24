@@ -212,3 +212,9 @@
   border-radius: 8px;
   border: 3px solid var(--paper);
 }
+
+/* 首页浅色底纹：极淡点阵，无纵深 */
+.home-dots {
+  background-image: radial-gradient(rgba(74, 84, 226, 0.07) 1.2px, transparent 1.2px);
+  background-size: 30px 30px;
+}

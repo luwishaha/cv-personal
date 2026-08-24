@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { createRouter, publicQuery, adminQuery } from "./middleware";
+import { createRouter, publicQuery } from "./middleware";
+import { assertAdminToken } from "./admin-auth";
 import {
   addMessage,
   askmeStats,
@@ -171,12 +172,23 @@ export const askmeRouter = createRouter({
     }),
 });
 
+// 管理端接口：独立密钥 token 鉴权（不走 Kimi 登录）。
+// 每个 procedure 的 input 必须带 token，开头统一 assertAdminToken。
+const authed = z.object({ token: z.string().min(1) });
+
 export const adminRouter = createRouter({
-  stats: adminQuery.query(() => askmeStats()),
+  stats: publicQuery.input(authed).query(async ({ input }) => {
+    await assertAdminToken(input.token);
+    return askmeStats();
+  }),
 
-  conversations: adminQuery.query(() => listConversations()),
+  conversations: publicQuery.input(authed).query(async ({ input }) => {
+    await assertAdminToken(input.token);
+    return listConversations();
+  }),
 
-  recentMessages: adminQuery.query(async () => {
+  recentMessages: publicQuery.input(authed).query(async ({ input }) => {
+    await assertAdminToken(input.token);
     const rows = await listRecentMessages(60);
     return rows.map((m) => ({
       ...m,
@@ -184,9 +196,10 @@ export const adminRouter = createRouter({
     }));
   }),
 
-  conversationMessages: adminQuery
-    .input(z.object({ conversationId: z.number() }))
+  conversationMessages: publicQuery
+    .input(authed.extend({ conversationId: z.number() }))
     .query(async ({ input }) => {
+      await assertAdminToken(input.token);
       const rows = await listMessagesByConversation(input.conversationId);
       return rows.map((m) => ({
         ...m,
@@ -194,22 +207,29 @@ export const adminRouter = createRouter({
       }));
     }),
 
-  knowledgeList: adminQuery.query(() => listKnowledge(false)),
+  knowledgeList: publicQuery.input(authed).query(async ({ input }) => {
+    await assertAdminToken(input.token);
+    return listKnowledge(false);
+  }),
 
-  knowledgeCreate: adminQuery
+  knowledgeCreate: publicQuery
     .input(
-      z.object({
+      authed.extend({
         title: z.string().min(1).max(255),
         category: z.string().max(64).default("通用"),
         content: z.string().min(1),
         keywords: z.string().max(512).default(""),
       }),
     )
-    .mutation(({ input }) => createKnowledge(input)),
+    .mutation(async ({ input }) => {
+      await assertAdminToken(input.token);
+      const { token: _t, ...data } = input;
+      return createKnowledge(data);
+    }),
 
-  knowledgeUpdate: adminQuery
+  knowledgeUpdate: publicQuery
     .input(
-      z.object({
+      authed.extend({
         id: z.number(),
         title: z.string().min(1).max(255).optional(),
         category: z.string().max(64).optional(),
@@ -219,32 +239,47 @@ export const adminRouter = createRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      const { id, ...data } = input;
+      await assertAdminToken(input.token);
+      const { id, token: _t, ...data } = input;
       await updateKnowledge(id, data);
     }),
 
-  knowledgeDelete: adminQuery
-    .input(z.object({ id: z.number() }))
-    .mutation(({ input }) => deleteKnowledge(input.id)),
+  knowledgeDelete: publicQuery
+    .input(authed.extend({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await assertAdminToken(input.token);
+      await deleteKnowledge(input.id);
+    }),
 
-  evidenceList: adminQuery.query(() => listEvidence()),
+  evidenceList: publicQuery.input(authed).query(async ({ input }) => {
+    await assertAdminToken(input.token);
+    return listEvidence();
+  }),
 
-  evidenceCreate: adminQuery
+  evidenceCreate: publicQuery
     .input(
-      z.object({
+      authed.extend({
         name: z.string().min(1).max(255),
         fileType: z.string().max(32).default("md"),
         content: z.string().max(200000).optional(),
         note: z.string().max(255).optional(),
       }),
     )
-    .mutation(({ input }) => createEvidence(input)),
+    .mutation(async ({ input }) => {
+      await assertAdminToken(input.token);
+      const { token: _t, ...data } = input;
+      return createEvidence(data);
+    }),
 
-  evidenceDelete: adminQuery
-    .input(z.object({ id: z.number() }))
-    .mutation(({ input }) => deleteEvidence(input.id)),
+  evidenceDelete: publicQuery
+    .input(authed.extend({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await assertAdminToken(input.token);
+      await deleteEvidence(input.id);
+    }),
 
-  llmGet: adminQuery.query(async () => {
+  llmGet: publicQuery.input(authed).query(async ({ input }) => {
+    await assertAdminToken(input.token);
     const s = await getLlmSettings();
     if (!s)
       return {
@@ -259,9 +294,9 @@ export const adminRouter = createRouter({
     return { ...s, apiKey: s.apiKey ? "••••••" + s.apiKey.slice(-4) : "" };
   }),
 
-  llmSet: adminQuery
+  llmSet: publicQuery
     .input(
-      z.object({
+      authed.extend({
         provider: z.string().max(64).optional(),
         apiBase: z.string().max(512).optional(),
         apiKey: z.string().max(512).optional(),
@@ -271,13 +306,15 @@ export const adminRouter = createRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      const data = { ...input };
+      await assertAdminToken(input.token);
+      const { token: _t, ...data } = input;
       // 传占位符则不更新 key
       if (data.apiKey && data.apiKey.startsWith("••••")) delete data.apiKey;
       await upsertLlmSettings(data);
     }),
 
-  llmTest: adminQuery.mutation(async () => {
+  llmTest: publicQuery.input(authed).mutation(async ({ input }) => {
+    await assertAdminToken(input.token);
     const answer = await callLlm("用一句话介绍李泽延", "");
     return { ok: answer !== null, answer };
   }),

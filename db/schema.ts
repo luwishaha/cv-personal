@@ -105,8 +105,20 @@ export const llmSettings = mysqlTable("llm_settings", {
     .$onUpdate(() => new Date()),
 });
 
+// 管理后台独立密钥（不使用 Kimi 登录；仅存 SHA-256 哈希，单行表）
+export const adminKeys = mysqlTable("admin_keys", {
+  id: serial("id").primaryKey(),
+  keyHash: varchar("keyHash", { length: 64 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
+});
+
 export type Conversation = typeof conversations.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type KnowledgeItem = typeof knowledgeItems.$inferSelect;
 export type EvidenceFile = typeof evidenceFiles.$inferSelect;
 export type LlmSetting = typeof llmSettings.$inferSelect;
+export type AdminKey = typeof adminKeys.$inferSelect;

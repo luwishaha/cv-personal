@@ -1,5 +1,9 @@
-import { knowledgeItems } from "@db/schema";
+import { createHash } from "node:crypto";
+import { adminKeys, knowledgeItems } from "@db/schema";
 import { getDb } from "../api/queries/connection";
+
+// 与 api/admin-auth.ts 中 DEFAULT_ADMIN_KEY 保持一致
+const DEFAULT_ADMIN_KEY = "lzy-admin-2026";
 
 const items = [
   {
@@ -62,6 +66,17 @@ const items = [
 
 export async function seed() {
   const db = getDb();
+
+  // 管理密钥：仅当从未设置过时写入默认密钥（不覆盖用户已修改的密钥）
+  const keyRows = await db.select().from(adminKeys).limit(1);
+  if (keyRows.length === 0) {
+    const keyHash = createHash("sha256").update(DEFAULT_ADMIN_KEY).digest("hex");
+    await db.insert(adminKeys).values({ keyHash });
+    console.log("seeded default admin key (lzy-admin-2026)，请登录后立即修改");
+  } else {
+    console.log("admin key already set, skip");
+  }
+
   const existing = await db.select().from(knowledgeItems).limit(1);
   if (existing.length > 0) {
     console.log("knowledge base already seeded, skip");

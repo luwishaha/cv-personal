@@ -48,6 +48,7 @@ function scoreItem(question: string, item: KnowledgeRow): number {
 async function callLlm(
   question: string,
   context: string,
+  onError?: (msg: string) => void,
 ): Promise<string | null> {
   const s = await getLlmSettings();
   if (!s || s.enabled !== "yes" || !s.apiBase || !s.apiKey || !s.model)
@@ -62,20 +63,27 @@ async function callLlm(
       },
       body: JSON.stringify({
         model: s.model,
-        temperature: Number(s.temperature) || 0.3,
+        // k3 等推理模型仅允许 temperature=1，固定传 1 以兼容所有模型
+        temperature: 1,
         messages: [
           { role: "system", content: `${BASE_FACTS}\n\n【知识库资料】\n${context || "（暂无匹配资料）"}\n\n回答要求：中文，简洁，分点，100 字左右；资料不足时明确说明，不要编造。` },
           { role: "user", content: question },
         ],
       }),
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(45000),
     });
-    if (!resp.ok) return null;
+    if (!resp.ok) {
+      onError?.(`HTTP ${resp.status}: ${(await resp.text()).slice(0, 200)}`);
+      return null;
+    }
     const data = (await resp.json()) as {
       choices?: { message?: { content?: string } }[];
     };
-    return data.choices?.[0]?.message?.content?.trim() || null;
-  } catch {
+    const answer = data.choices?.[0]?.message?.content?.trim() || null;
+    if (!answer) onError?.("模型返回了空内容");
+    return answer;
+  } catch (e) {
+    onError?.(e instanceof Error ? e.message : String(e));
     return null;
   }
 }
@@ -315,7 +323,8 @@ export const adminRouter = createRouter({
 
   llmTest: publicQuery.input(authed).mutation(async ({ input }) => {
     await assertAdminToken(input.token);
-    const answer = await callLlm("用一句话介绍李泽延", "");
-    return { ok: answer !== null, answer };
+    let error: string | undefined;
+    const answer = await callLlm("用一句话介绍李泽延", "", (m) => (error = m));
+    return { ok: answer !== null, answer, error };
   }),
 });

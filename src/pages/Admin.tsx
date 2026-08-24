@@ -632,7 +632,7 @@ function ApiSettings({ token }: { token: string }) {
                     setTestResult(
                       r.ok
                         ? `✓ 连通成功：${r.answer}`
-                        : "✗ 连通失败：请检查 Base / Key / 模型名",
+                        : `✗ 连通失败：${r.error ?? "请检查 Base / Key / 模型名"}`,
                     ),
                   onError: () => setTestResult("✗ 请求失败"),
                 },

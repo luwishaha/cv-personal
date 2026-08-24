@@ -33,6 +33,12 @@ const TIMELINE = [
     role: "供应链管理实习生",
     desc: "残损与赔付数据挖掘，累计预计挽损超 256 万元",
   },
+  {
+    time: "2024.09 — 11",
+    org: "德尔玛 · 订单管理部",
+    role: "供应链计划实习生",
+    desc: "SRM / OMS / U9 全链路订单跟进与排产协同，63w 件货品订单履约率超 98%",
+  },
 ];
 
 export default function Experience() {
